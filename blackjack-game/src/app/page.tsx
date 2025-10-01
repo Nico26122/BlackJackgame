@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { getChips, updateChips, saveGame, getHistory } from '@/lib/supabaseAPI';
 
 // Card type definitions
 type Suit = '♠' | '♥' | '♦' | '♣';
@@ -18,11 +21,12 @@ interface PlayingCard {
 
 interface GameHistory {
   id: string;
-  playerHand: PlayingCard[];
-  dealerHand: PlayingCard[];
+  user_id: string;
+  player_hand: PlayingCard[];
+  dealer_hand: PlayingCard[];
   result: 'win' | 'loss' | 'push';
   bet: number;
-  timestamp: number;
+  created_at: string;
 }
 
 // Utility functions
@@ -62,40 +66,21 @@ const calculateHandValue = (hand: PlayingCard[]): number => {
   return value;
 };
 
-// Mock API functions (will be replaced with Supabase later)
-const mockAPI = {
-  getChips: async (): Promise<number> => {
-    const stored = localStorage.getItem('chips');
-    return stored ? parseInt(stored) : 1000;
-  },
+// Mock AI advice (will be replaced with Gemini later)
+const getAIAdvice = async (playerHand: PlayingCard[], dealerCard: PlayingCard, playerValue: number): Promise<string> => {
+  const dealerValue = getCardValue(dealerCard);
   
-  updateChips: async (amount: number): Promise<void> => {
-    localStorage.setItem('chips', amount.toString());
-  },
-  
-  saveGame: async (game: Omit<GameHistory, 'id'>): Promise<void> => {
-    const history = JSON.parse(localStorage.getItem('gameHistory') || '[]');
-    history.push({ ...game, id: Date.now().toString() });
-    localStorage.setItem('gameHistory', JSON.stringify(history));
-  },
-  
-  getHistory: async (): Promise<GameHistory[]> => {
-    return JSON.parse(localStorage.getItem('gameHistory') || '[]');
-  },
-
-  getAIAdvice: async (playerHand: PlayingCard[], dealerCard: PlayingCard, playerValue: number): Promise<string> => {
-    // Mock AI advice (will be replaced with Gemini API later)
-    const dealerValue = getCardValue(dealerCard);
-    
-    if (playerValue < 12) return "Hit - Your hand is low, you need more cards.";
-    if (playerValue >= 17) return "Stand - Your hand is strong enough.";
-    if (dealerValue >= 7 && playerValue < 17) return "Hit - Dealer shows a strong card.";
-    return "Stand - Your hand is in a good position.";
-  }
+  if (playerValue < 12) return "Hit - Your hand is low, you need more cards.";
+  if (playerValue >= 17) return "Stand - Your hand is strong enough.";
+  if (dealerValue >= 7 && playerValue < 17) return "Hit - Dealer shows a strong card.";
+  return "Stand - Your hand is in a good position.";
 };
 
 export default function BlackjackGame() {
-  const [chips, setChips] = useState(1000);
+  const router = useRouter();
+  const { user, loading: authLoading, signOut } = useAuth();
+  
+  const [chips, setChips] = useState(0);
   const [bet, setBet] = useState(10);
   const [playerHand, setPlayerHand] = useState<PlayingCard[]>([]);
   const [dealerHand, setDealerHand] = useState<PlayingCard[]>([]);
@@ -106,21 +91,47 @@ export default function BlackjackGame() {
   const [aiAdvice, setAiAdvice] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
   const [animatingCard, setAnimatingCard] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadChips();
-    loadHistory();
-  }, []);
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
-  const loadChips = async () => {
-    const savedChips = await mockAPI.getChips();
-    setChips(savedChips);
+  // Load user data when authenticated
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
+
+  const loadUserData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    const userChips = await getChips(user.id);
+    const userHistory = await getHistory(user.id);
+    
+    setChips(userChips);
+    setHistory(userHistory);
+    setLoading(false);
   };
 
-  const loadHistory = async () => {
-    const savedHistory = await mockAPI.getHistory();
-    setHistory(savedHistory);
-  };
+  // Show loading while checking auth
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 flex items-center justify-center">
+        <div className="text-white text-2xl">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render game if no user
+  if (!user) {
+    return null;
+  }
 
   const startGame = () => {
     if (bet > chips || bet <= 0) {
@@ -190,7 +201,7 @@ export default function BlackjackGame() {
     dealCard();
   };
 
-  const determineWinner = (finalDealerHand: PlayingCard[]) => {
+  const determineWinner = async (finalDealerHand: PlayingCard[]) => {
     const playerValue = calculateHandValue(playerHand);
     const dealerValue = calculateHandValue(finalDealerHand);
     
@@ -215,34 +226,22 @@ export default function BlackjackGame() {
     }
 
     setChips(newChips);
-    mockAPI.updateChips(newChips);
-    mockAPI.saveGame({
-      playerHand,
-      dealerHand: finalDealerHand,
-      result,
-      bet,
-      timestamp: Date.now()
-    });
+    await updateChips(user.id, newChips);
+    await saveGame(user.id, playerHand, finalDealerHand, result, bet);
     
     setGameState('ended');
-    loadHistory();
+    await loadUserData(); // Reload to get updated history
   };
 
-  const endGame = (result: 'loss') => {
+  const endGame = async (result: 'loss') => {
     const newChips = chips - bet;
     setChips(newChips);
-    mockAPI.updateChips(newChips);
-    mockAPI.saveGame({
-      playerHand,
-      dealerHand,
-      result,
-      bet,
-      timestamp: Date.now()
-    });
+    await updateChips(user.id, newChips);
+    await saveGame(user.id, playerHand, dealerHand, result, bet);
     
     setGameState('ended');
     setMessage(`Bust! You lose $${bet}!`);
-    loadHistory();
+    await loadUserData();
   };
 
   const resetGame = () => {
@@ -253,10 +252,10 @@ export default function BlackjackGame() {
     setAiAdvice('');
   };
 
-  const buyChips = () => {
+  const buyChips = async () => {
     const newChips = chips + 500;
     setChips(newChips);
-    mockAPI.updateChips(newChips);
+    await updateChips(user.id, newChips);
     setMessage('Added 500 chips!');
   };
 
@@ -264,13 +263,14 @@ export default function BlackjackGame() {
     if (gameState !== 'playing' || playerHand.length === 0) return;
     
     setLoadingAI(true);
-    const advice = await mockAPI.getAIAdvice(
-      playerHand,
-      dealerHand[0],
-      calculateHandValue(playerHand)
-    );
+    const advice = await getAIAdvice(playerHand, dealerHand[0], calculateHandValue(playerHand));
     setAiAdvice(advice);
     setLoadingAI(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
   };
 
   const CardComponent = ({ card, hidden = false }: { card: PlayingCard; hidden?: boolean }) => {
@@ -309,7 +309,7 @@ export default function BlackjackGame() {
       </div>
       
       <div className="grid gap-4">
-        {history.slice().reverse().map((game) => (
+        {history.map((game) => (
           <Card key={game.id}>
             <CardContent className="pt-6">
               <div className="flex justify-between items-start mb-4">
@@ -325,15 +325,15 @@ export default function BlackjackGame() {
                     Bet: ${game.bet}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {new Date(game.timestamp).toLocaleString()}
+                    {new Date(game.created_at).toLocaleString()}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-semibold">
-                    Player: {calculateHandValue(game.playerHand)}
+                    Player: {calculateHandValue(game.player_hand)}
                   </div>
                   <div className="text-sm font-semibold">
-                    Dealer: {calculateHandValue(game.dealerHand)}
+                    Dealer: {calculateHandValue(game.dealer_hand)}
                   </div>
                 </div>
               </div>
@@ -369,6 +369,7 @@ export default function BlackjackGame() {
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Blackjack</h1>
               <p className="text-lg text-gray-600">Chips: ${chips}</p>
+              <p className="text-sm text-gray-500">{user.email}</p>
             </div>
             <div className="flex gap-2">
               <Button onClick={buyChips} variant="outline">
@@ -376,6 +377,9 @@ export default function BlackjackGame() {
               </Button>
               <Button onClick={() => setShowHistory(true)} variant="outline">
                 History
+              </Button>
+              <Button onClick={handleSignOut} variant="outline">
+                Sign Out
               </Button>
             </div>
           </div>
