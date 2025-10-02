@@ -263,8 +263,30 @@ export default function BlackjackGame() {
     if (gameState !== 'playing' || playerHand.length === 0) return;
     
     setLoadingAI(true);
-    const advice = await getAIAdvice(playerHand, dealerHand[0], calculateHandValue(playerHand));
-    setAiAdvice(advice);
+    
+    try {
+      const response = await fetch('/api/ai-advice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerHand,
+          dealerCard: dealerHand[0],
+          playerValue: calculateHandValue(playerHand),
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.advice) {
+        setAiAdvice(data.advice);
+      } else {
+        setAiAdvice('Unable to get advice right now.');
+      }
+    } catch (error) {
+      console.error('Error getting AI advice:', error);
+      setAiAdvice('Error getting advice. Please try again.');
+    }
+    
     setLoadingAI(false);
   };
 
