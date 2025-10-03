@@ -648,28 +648,30 @@ return (
           </Button>
         </div>
       )}
-      
+
         {gameState === 'playing' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Button 
               onClick={hit} 
               size="lg" 
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all"
+              disabled={newCardId !== null} // Disable while cards are animating
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Hit 
             </Button>
             <Button 
               onClick={stand} 
               size="lg" 
-              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all"
+              disabled={newCardId !== null} 
+              className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Stand 
             </Button>
             <Button 
               onClick={getAIHelp} 
               size="lg" 
-              disabled={loadingAI}
-              className="backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all"
+              disabled={loadingAI || newCardId !== null} 
+              className="backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loadingAI ? '⏳ Thinking...' : '🤖 Ask AI'}
             </Button>
