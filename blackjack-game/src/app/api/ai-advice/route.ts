@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
 Player's hand value: ${playerValue}
 Dealer's visible card: ${dealerCard.rank} of ${dealerCard.suit}
 
-Give brief, strategic advice (1-2 sentences) on whether the player should HIT or STAND. Consider basic blackjack strategy.`;
+Give brief advice (1-2 sentences) on whether the player should HIT or STAND. 
+Only recommend these two actions - do not mention double down, split, or surrender.
+Consider basic blackjack strategy.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
