@@ -581,43 +581,31 @@ return (
               Place Your Bet
             </label>
             
-            {/* Preset Buttons */}
+            {/* Increment Buttons */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               <Button
-                onClick={() => setBet(25)}
-                disabled={chips < 25}
+                onClick={() => setBet(Math.min(chips, bet + 25))}
+                disabled={chips < bet + 25}
                 variant="outline"
-                className={`h-16 text-lg font-bold transition-all ${
-                  bet === 25 
-                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                }`}
+                className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 h-16 text-lg font-bold transition-all disabled:opacity-50"
               >
-                $25
+                +$25
               </Button>
               <Button
-                onClick={() => setBet(50)}
-                disabled={chips < 50}
+                onClick={() => setBet(Math.min(chips, bet + 50))}
+                disabled={chips < bet + 50}
                 variant="outline"
-                className={`h-16 text-lg font-bold transition-all ${
-                  bet === 50 
-                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                }`}
+                className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 h-16 text-lg font-bold transition-all disabled:opacity-50"
               >
-                $50
+                +$50
               </Button>
               <Button
-                onClick={() => setBet(100)}
-                disabled={chips < 100}
+                onClick={() => setBet(Math.min(chips, bet + 100))}
+                disabled={chips < bet + 100}
                 variant="outline"
-                className={`h-16 text-lg font-bold transition-all ${
-                  bet === 100 
-                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                }`}
+                className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 h-16 text-lg font-bold transition-all disabled:opacity-50"
               >
-                $100
+                +$100
               </Button>
             </div>
 
@@ -660,6 +648,7 @@ return (
           </Button>
         </div>
       )}
+      
         {gameState === 'playing' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Button 
