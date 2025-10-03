@@ -531,29 +531,73 @@ return (
         {gameState === 'betting' && (
           <div className="space-y-6">
             <div>
-              <label className="block text-lg font-semibold text-white mb-3">
+              <label className="block text-lg font-semibold text-white mb-4">
                 Place Your Bet
               </label>
-              <Input
-                type="number"
-                value={bet}
-                onChange={(e) => setBet(Math.max(1, parseInt(e.target.value) || 0))}
-                min="1"
-                max={chips}
-                className="max-w-xs bg-white/5 border-white/20 text-white text-xl h-14 backdrop-blur-xl placeholder:text-white/50"
-                placeholder="Enter amount"
-              />
-            </div>
-            <Button 
-              onClick={startGame} 
-              className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg h-14 px-12 shadow-lg hover:shadow-xl transition-all"
-              size="lg"
-            >
-              Deal Cards 🎴
-            </Button>
-          </div>
-        )}
+              
+              {/* Preset Buttons */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Button
+                  onClick={() => setBet(25)}
+                  disabled={chips < 25}
+                  variant="outline"
+                  className={`h-16 text-lg font-bold transition-all ${
+                    bet === 25 
+                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                  }`}
+                >
+                  $25
+                </Button>
+                <Button
+                  onClick={() => setBet(50)}
+                  disabled={chips < 50}
+                  variant="outline"
+                  className={`h-16 text-lg font-bold transition-all ${
+                    bet === 50 
+                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                  }`}
+                >
+                  $50
+                </Button>
+                <Button
+                  onClick={() => setBet(100)}
+                  disabled={chips < 100}
+                  variant="outline"
+                  className={`h-16 text-lg font-bold transition-all ${
+                    bet === 100 
+                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                  }`}
+                >
+                  $100
+                </Button>
+              </div>
 
+      {/* Editable Current Bet Display */}
+      <div className="backdrop-blur-xl bg-white/10 border border-white/30 rounded-xl p-4">
+        <p className="text-white/70 text-sm mb-2 text-center">Current Bet</p>
+        <Input
+          type="number"
+          value={bet}
+          onChange={(e) => setBet(Math.max(1, Math.min(chips, parseInt(e.target.value) || 0)))}
+          min="1"
+          max={chips}
+          className="bg-white/5 border-white/30 text-white text-3xl font-bold text-center h-16 backdrop-blur-xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+      </div>
+    </div>
+    
+    <Button 
+      onClick={startGame} 
+      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg h-14 shadow-lg hover:shadow-xl transition-all"
+      size="lg"
+    >
+      Deal Cards
+    </Button>
+  </div>
+)}
         {gameState === 'playing' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Button 
