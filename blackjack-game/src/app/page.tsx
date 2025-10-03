@@ -125,43 +125,68 @@ export default function BlackjackGame() {
   }
 
   const startGame = () => {
-    if (bet > chips || bet <= 0) {
-      setMessage('Invalid bet amount!');
+    if (bet <= 0 || bet > chips) {
+      setMessage(bet <= 0 ? 'Please enter a valid bet amount!' : 'Insufficient chips!');
       return;
     }
 
-    const newPlayerHand = [getRandomCard(), getRandomCard()];
-    const newDealerHand = [getRandomCard()];
-    
-    setPlayerHand(newPlayerHand);
-    setDealerHand(newDealerHand);
     setAiAdvice('');
-
-    // Check for player blackjack (natural 21)
-    const playerValue = calculateHandValue(newPlayerHand);
-    if (playerValue === 21 && newPlayerHand.length === 2) {
-      // Player has blackjack!
-      setGameState('ended');
-      const winAmount = Math.floor(bet * 1.5);
-      const newChips = chips + winAmount;
-      setChips(newChips);
-      setMessage(`🎉 BLACKJACK! You win $${winAmount}!`);
-      
-      // Save to database
-      updateChips(user.id, newChips);
-      saveGame(user.id, newPlayerHand, newDealerHand, 'win', bet);
-      loadUserData();
-      return;
-    }
-
     setGameState('playing');
-    setMessage('Hit or Stand?');
+    setMessage('Dealing...');
 
-    // Animate cards
-    setTimeout(() => setAnimatingCard(newPlayerHand[0].id), 100);
-    setTimeout(() => setAnimatingCard(newPlayerHand[1].id), 300);
-    setTimeout(() => setAnimatingCard(newDealerHand[0].id), 500);
-    setTimeout(() => setAnimatingCard(null), 700);
+    const card1 = getRandomCard();
+    const card2 = getRandomCard();
+    const dealerCard = getRandomCard();
+
+    // Deal first player card
+    setTimeout(() => {
+      setPlayerHand([card1]);
+      setAnimatingCard(card1.id);
+    }, 300);
+
+    setTimeout(() => {
+      setAnimatingCard(null);
+    }, 600);
+
+    // Deal dealer card
+    setTimeout(() => {
+      setDealerHand([dealerCard]);
+      setAnimatingCard(dealerCard.id);
+    }, 900);
+
+    setTimeout(() => {
+      setAnimatingCard(null);
+    }, 1200);
+
+    // Deal second player card
+    setTimeout(() => {
+      setPlayerHand([card1, card2]);
+      setAnimatingCard(card2.id);
+    }, 1500);
+
+    setTimeout(() => {
+      setAnimatingCard(null);
+    }, 1800);
+
+    // Check for blackjack after all cards dealt
+    setTimeout(() => {
+      const newPlayerHand = [card1, card2];
+      const playerValue = calculateHandValue(newPlayerHand);
+      
+      if (playerValue === 21) {
+        setGameState('ended');
+        const winAmount = Math.floor(bet * 1.5);
+        const newChips = chips + winAmount;
+        setChips(newChips);
+        setMessage(`BLACKJACK! You win $${winAmount}!`);
+        
+        updateChips(user.id, newChips);
+        saveGame(user.id, newPlayerHand, [dealerCard], 'win', bet);
+        loadUserData();
+      } else {
+        setMessage('Hit or Stand?');
+      }
+    }, 2100);
   };
 
   const hit = () => {
@@ -239,7 +264,19 @@ export default function BlackjackGame() {
     await saveGame(user.id, playerHand, finalDealerHand, result, bet);
     
     setGameState('ended');
-    await loadUserData(); // Reload to get updated history
+    
+    // Add to history locally to avoid full reload when determeining winner
+    
+    const newGame = {
+      id: Date.now().toString(),
+      user_id: user.id,
+      player_hand: playerHand,
+      dealer_hand: finalDealerHand,
+      result,
+      bet,
+      created_at: new Date().toISOString()
+    };
+    setHistory([newGame, ...history]);
   };
 
   const endGame = async (result: 'loss') => {
@@ -310,8 +347,8 @@ export default function BlackjackGame() {
     
     return (
       <div 
-        className={`relative w-24 h-36 bg-white rounded-xl shadow-2xl border-2 border-gray-200 flex flex-col items-center justify-center transition-all duration-300 transform hover:scale-105 ${
-          isAnimating ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
+        className={`relative w-24 h-36 bg-white rounded-xl shadow-2xl border-2 border-gray-200 flex flex-col items-center justify-center transform hover:scale-105 will-change-transform ${
+          isAnimating ? 'scale-0 opacity-0' : 'scale-100 opacity-100 transition-all duration-300 ease-out'
         }`}
         style={{
           boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
@@ -528,76 +565,92 @@ return (
 
       {/* Controls */}
       <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-6">
-        {gameState === 'betting' && (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-lg font-semibold text-white mb-4">
-                Place Your Bet
-              </label>
-              
-              {/* Preset Buttons */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <Button
-                  onClick={() => setBet(25)}
-                  disabled={chips < 25}
-                  variant="outline"
-                  className={`h-16 text-lg font-bold transition-all ${
-                    bet === 25 
-                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                  }`}
-                >
-                  $25
-                </Button>
-                <Button
-                  onClick={() => setBet(50)}
-                  disabled={chips < 50}
-                  variant="outline"
-                  className={`h-16 text-lg font-bold transition-all ${
-                    bet === 50 
-                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                  }`}
-                >
-                  $50
-                </Button>
-                <Button
-                  onClick={() => setBet(100)}
-                  disabled={chips < 100}
-                  variant="outline"
-                  className={`h-16 text-lg font-bold transition-all ${
-                    bet === 100 
-                      ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
-                      : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
-                  }`}
-                >
-                  $100
-                </Button>
-              </div>
+       {gameState === 'betting' && (
+        <div className="space-y-6">
+          <div>
+            <label className="block text-lg font-semibold text-white mb-4">
+              Place Your Bet
+            </label>
+            
+            {/* Preset Buttons */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <Button
+                onClick={() => setBet(25)}
+                disabled={chips < 25}
+                variant="outline"
+                className={`h-16 text-lg font-bold transition-all ${
+                  bet === 25 
+                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                }`}
+              >
+                $25
+              </Button>
+              <Button
+                onClick={() => setBet(50)}
+                disabled={chips < 50}
+                variant="outline"
+                className={`h-16 text-lg font-bold transition-all ${
+                  bet === 50 
+                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                }`}
+              >
+                $50
+              </Button>
+              <Button
+                onClick={() => setBet(100)}
+                disabled={chips < 100}
+                variant="outline"
+                className={`h-16 text-lg font-bold transition-all ${
+                  bet === 100 
+                    ? 'bg-green-500 text-white border-green-400 hover:bg-green-600' 
+                    : 'backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20'
+                }`}
+              >
+                $100
+              </Button>
+            </div>
 
-      {/* Editable Current Bet Display */}
-      <div className="backdrop-blur-xl bg-white/10 border border-white/30 rounded-xl p-4">
-        <p className="text-white/70 text-sm mb-2 text-center">Current Bet</p>
-        <Input
-          type="number"
-          value={bet}
-          onChange={(e) => setBet(Math.max(1, Math.min(chips, parseInt(e.target.value) || 0)))}
-          min="1"
-          max={chips}
-          className="bg-white/5 border-white/30 text-white text-3xl font-bold text-center h-16 backdrop-blur-xl [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
-      </div>
-    </div>
-    
-    <Button 
-      onClick={startGame} 
-      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg h-14 shadow-lg hover:shadow-xl transition-all"
-      size="lg"
-    >
-      Deal Cards
-    </Button>
-  </div>
-)}
+            {/* Editable Current Bet Display */}
+            <div className="backdrop-blur-xl bg-white/10 border border-white/30 rounded-xl p-4">
+              <p className="text-white/70 text-sm mb-2 text-center">Current Bet</p>
+              <Input
+                type="number"
+                value={bet === 0 ? '' : bet}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    setBet(0);
+                  } else {
+                    const num = parseInt(value);
+                    if (!isNaN(num)) {
+                      setBet(Math.min(chips, Math.max(0, num)));
+                    }
+                  }
+                }}
+                placeholder="Enter amount"
+                min="0"
+                max={chips}
+                className="bg-white/5 border-white/30 text-white text-3xl font-bold text-center h-16 backdrop-blur-xl placeholder:text-white/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              {bet === 0 && (
+                <p className="text-red-400 text-sm text-center mt-2 font-semibold">
+                  Invalid bet amount
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <Button 
+            onClick={startGame} 
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg h-14 shadow-lg hover:shadow-xl transition-all"
+            size="lg"
+          >
+            Deal Cards
+          </Button>
+        </div>
+      )}
         {gameState === 'playing' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Button 
@@ -605,14 +658,14 @@ return (
               size="lg" 
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all"
             >
-              Hit 👆
+              Hit 
             </Button>
             <Button 
               onClick={stand} 
               size="lg" 
               className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-lg h-16 shadow-lg hover:shadow-xl transition-all"
             >
-              Stand ✋
+              Stand 
             </Button>
             <Button 
               onClick={getAIHelp} 
