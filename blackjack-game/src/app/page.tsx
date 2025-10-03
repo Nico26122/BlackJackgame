@@ -83,6 +83,8 @@ export default function BlackjackGame() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [animatingCard, setAnimatingCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [newCardId, setNewCardId] = useState<string | null>(null);
+
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -133,6 +135,7 @@ export default function BlackjackGame() {
     setAiAdvice('');
     setGameState('playing');
     setMessage('Dealing...');
+    setNewCardId(null);
 
     const card1 = getRandomCard();
     const card2 = getRandomCard();
@@ -141,37 +144,25 @@ export default function BlackjackGame() {
     // Deal first player card
     setTimeout(() => {
       setPlayerHand([card1]);
-      setAnimatingCard(card1.id);
+      setNewCardId(card1.id);
     }, 300);
-
-    setTimeout(() => {
-      setAnimatingCard(null);
-    }, 600);
 
     // Deal dealer card
     setTimeout(() => {
       setDealerHand([dealerCard]);
-      setAnimatingCard(dealerCard.id);
+      setNewCardId(dealerCard.id);
     }, 900);
-
-    setTimeout(() => {
-      setAnimatingCard(null);
-    }, 1200);
 
     // Deal second player card
     setTimeout(() => {
       setPlayerHand([card1, card2]);
-      setAnimatingCard(card2.id);
+      setNewCardId(card2.id);
     }, 1500);
 
+    // Check for blackjack
     setTimeout(() => {
-      setAnimatingCard(null);
-    }, 1800);
-
-    // Check for blackjack after all cards dealt
-    setTimeout(() => {
-      const newPlayerHand = [card1, card2];
-      const playerValue = calculateHandValue(newPlayerHand);
+      setNewCardId(null);
+      const playerValue = calculateHandValue([card1, card2]);
       
       if (playerValue === 21) {
         setGameState('ended');
@@ -181,8 +172,18 @@ export default function BlackjackGame() {
         setMessage(`BLACKJACK! You win $${winAmount}!`);
         
         updateChips(user.id, newChips);
-        saveGame(user.id, newPlayerHand, [dealerCard], 'win', bet);
-        loadUserData();
+        saveGame(user.id, [card1, card2], [dealerCard], 'win', bet);
+        
+        const newGame = {
+          id: Date.now().toString(),
+          user_id: user.id,
+          player_hand: [card1, card2],
+          dealer_hand: [dealerCard],
+          result: 'win' as const,
+          bet,
+          created_at: new Date().toISOString()
+        };
+        setHistory([newGame, ...history]);
       } else {
         setMessage('Hit or Stand?');
       }
@@ -194,13 +195,13 @@ export default function BlackjackGame() {
     const newHand = [...playerHand, newCard];
     setPlayerHand(newHand);
     setAiAdvice('');
+    setNewCardId(newCard.id); 
     
-    setAnimatingCard(newCard.id);
-    setTimeout(() => setAnimatingCard(null), 300);
+    setTimeout(() => setNewCardId(null), 600); // Clear after animation
 
     const value = calculateHandValue(newHand);
     if (value > 21) {
-      setTimeout(() => endGame('loss'), 500);
+      setTimeout(() => endGame('loss'), 800);
     }
   };
 
@@ -220,9 +221,9 @@ export default function BlackjackGame() {
           const newCard = getRandomCard();
           newDealerHand = [...newDealerHand, newCard];
           setDealerHand(newDealerHand);
+          setNewCardId(newCard.id); 
           
-          setAnimatingCard(newCard.id);
-          setTimeout(() => setAnimatingCard(null), 300);
+          setTimeout(() => setNewCardId(null), 600); // Clear after animation
           
           dealerValue = calculateHandValue(newDealerHand);
           dealCard();
@@ -266,7 +267,6 @@ export default function BlackjackGame() {
     setGameState('ended');
     
     // Add to history locally to avoid full reload when determeining winner
-    
     const newGame = {
       id: Date.now().toString(),
       user_id: user.id,
@@ -287,8 +287,19 @@ export default function BlackjackGame() {
     
     setGameState('ended');
     setMessage(`Bust! You lose $${bet}!`);
-    await loadUserData();
+    //await loadUserData(); <-- avoid full reload
+    const newGame = {
+      id: Date.now().toString(),
+      user_id: user.id,
+      player_hand: playerHand,
+      dealer_hand: dealerHand,
+      result: 'loss' as const,
+      bet,
+      created_at: new Date().toISOString()
+    };
+    setHistory([newGame, ...history]);
   };
+
 
   const resetGame = () => {
     setPlayerHand([]);
@@ -343,13 +354,11 @@ export default function BlackjackGame() {
 
   const CardComponent = ({ card, hidden = false }: { card: PlayingCard; hidden?: boolean }) => {
     const isRed = card.suit === '♥' || card.suit === '♦';
-    const isAnimating = animatingCard === card.id;
+    const shouldAnimate = card.id === newCardId;
     
     return (
       <div 
-        className={`relative w-24 h-36 bg-white rounded-xl shadow-2xl border-2 border-gray-200 flex flex-col items-center justify-center transform hover:scale-105 will-change-transform ${
-          isAnimating ? 'scale-0 opacity-0' : 'scale-100 opacity-100 transition-all duration-300 ease-out'
-        }`}
+        className={`relative w-24 h-36 bg-white rounded-xl shadow-2xl border-2 border-gray-200 flex flex-col items-center justify-center transform hover:scale-105 ${shouldAnimate ? 'card-enter' : 'opacity-100'}`}
         style={{
           boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
         }}
@@ -476,21 +485,21 @@ return (
               variant="outline"
               className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all"
             >
-              💰 Buy 500 Chips
+              Buy 500 Chips
             </Button>
             <Button 
               onClick={() => setShowHistory(true)} 
               variant="outline"
               className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all"
             >
-              📊 History
+              History
             </Button>
             <Button 
               onClick={handleSignOut} 
               variant="outline"
               className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all"
             >
-              🚪 Sign Out
+              Sign Out
             </Button>
           </div>
         </div>
@@ -684,7 +693,7 @@ return (
             size="lg" 
             className="w-full sm:w-auto bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold text-lg h-14 px-12 shadow-lg hover:shadow-xl transition-all"
           >
-            Play Again 🔄
+            Play Again 
           </Button>
         )}
       </div>
