@@ -66,15 +66,6 @@ const calculateHandValue = (hand: PlayingCard[]): number => {
   return value;
 };
 
-// Mock AI advice (will be replaced with Gemini later)
-const getAIAdvice = async (playerHand: PlayingCard[], dealerCard: PlayingCard, playerValue: number): Promise<string> => {
-  const dealerValue = getCardValue(dealerCard);
-  
-  if (playerValue < 12) return "Hit - Your hand is low, you need more cards.";
-  if (playerValue >= 17) return "Stand - Your hand is strong enough.";
-  if (dealerValue >= 7 && playerValue < 17) return "Hit - Dealer shows a strong card.";
-  return "Stand - Your hand is in a good position.";
-};
 
 export default function BlackjackGame() {
   const router = useRouter();
@@ -144,9 +135,27 @@ export default function BlackjackGame() {
     
     setPlayerHand(newPlayerHand);
     setDealerHand(newDealerHand);
+    setAiAdvice('');
+
+    // Check for player blackjack (natural 21)
+    const playerValue = calculateHandValue(newPlayerHand);
+    if (playerValue === 21 && newPlayerHand.length === 2) {
+      // Player has blackjack!
+      setGameState('ended');
+      const winAmount = Math.floor(bet * 1.5);
+      const newChips = chips + winAmount;
+      setChips(newChips);
+      setMessage(`🎉 BLACKJACK! You win $${winAmount}!`);
+      
+      // Save to database
+      updateChips(user.id, newChips);
+      saveGame(user.id, newPlayerHand, newDealerHand, 'win', bet);
+      loadUserData();
+      return;
+    }
+
     setGameState('playing');
     setMessage('Hit or Stand?');
-    setAiAdvice('');
 
     // Animate cards
     setTimeout(() => setAnimatingCard(newPlayerHand[0].id), 100);
@@ -327,64 +336,72 @@ export default function BlackjackGame() {
   };
 
   const HistoryView = () => (
-   <div className="space-y-6">
-    <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold text-white">Game History</h2>
-        <Button 
-          onClick={() => setShowHistory(false)}
-          className="backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white transition-all"
-        >
-          Back to Game
-        </Button>
+    <div className="space-y-6">
+      <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-3xl font-bold text-white">Game History</h2>
+          <Button 
+            onClick={() => setShowHistory(false)}
+            className="backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white transition-all"
+          >
+            Back to Game
+          </Button>
+        </div>
+      </div>
+      
+      <div className="grid gap-4">
+        {history.map((game) => {
+          const isBlackjack = game.result === 'win' && 
+                            calculateHandValue(game.player_hand) === 21 && 
+                            game.player_hand.length === 2;
+          
+          return (
+            <div 
+              key={game.id}
+              className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-xl p-6 hover:bg-white/15 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className={`text-2xl font-bold mb-2 ${
+                    game.result === 'win' ? 'text-green-400' : 
+                    game.result === 'loss' ? 'text-red-400' : 
+                    'text-yellow-400'
+                  }`}>
+                    {isBlackjack ? '⭐ BLACKJACK!' : 
+                    game.result === 'win' ? '🎉 WIN' : 
+                    game.result === 'loss' ? '💔 LOSS' : '🤝 PUSH'}
+                  </div>
+                  <div className="text-white/90 font-semibold">
+                    Bet: ${game.bet} {isBlackjack && `(Won $${Math.floor(game.bet * 1.5)})`}
+                  </div>
+                  <div className="text-white/60 text-sm mt-1">
+                    {new Date(game.created_at).toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white font-semibold">
+                    Player: {calculateHandValue(game.player_hand)}
+                  </div>
+                  <div className="text-white font-semibold">
+                    Dealer: {calculateHandValue(game.dealer_hand)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        
+        {history.length === 0 && (
+          <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+            <div className="text-6xl mb-4">🎴</div>
+            <p className="text-white/70 text-lg">
+              No games played yet. Start playing to build your history!
+            </p>
+          </div>
+        )}
       </div>
     </div>
-    
-    <div className="grid gap-4">
-      {history.map((game) => (
-        <div 
-          key={game.id}
-          className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-xl p-6 hover:bg-white/15 transition-all"
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <div className={`text-2xl font-bold mb-2 ${
-                game.result === 'win' ? 'text-green-400' : 
-                game.result === 'loss' ? 'text-red-400' : 
-                'text-yellow-400'
-              }`}>
-                {game.result === 'win' ? '🎉 WIN' : game.result === 'loss' ? '💔 LOSS' : '🤝 PUSH'}
-              </div>
-              <div className="text-white/90 font-semibold">
-                Bet: ${game.bet}
-              </div>
-              <div className="text-white/60 text-sm mt-1">
-                {new Date(game.created_at).toLocaleString()}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-white font-semibold">
-                Player: {calculateHandValue(game.player_hand)}
-              </div>
-              <div className="text-white font-semibold">
-                Dealer: {calculateHandValue(game.dealer_hand)}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-      
-      {history.length === 0 && (
-        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
-          <div className="text-6xl mb-4">🎴</div>
-          <p className="text-white/70 text-lg">
-            No games played yet. Start playing to build your history!
-          </p>
-        </div>
-      )}
-    </div>
-  </div>
-);
+  );
 
   if (showHistory) {
     return (
