@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function LoginPage() {
@@ -42,25 +41,26 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-800 to-green-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Welcome Back!</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to play blackjack
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-green-900 to-teal-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo/Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-white mb-2">Blackjack 👑</h1>
+          <p className="text-white/70 text-lg">Welcome back to the table</p>
+        </div>
+
+        {/* Login Card */}
+        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-8">
+          <form onSubmit={handleLogin} className="space-y-6">
             {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
+              <div className="backdrop-blur-xl bg-red-500/20 border border-red-400/30 rounded-xl p-4">
+                <p className="text-red-200 text-sm">{error}</p>
+              </div>
             )}
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
+              <label htmlFor="email" className="text-sm font-semibold text-white block">
+                Email Address
               </label>
               <Input
                 id="email"
@@ -69,11 +69,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 backdrop-blur-xl focus:bg-white/10 transition-all"
               />
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label htmlFor="password" className="text-sm font-semibold text-white block">
                 Password
               </label>
               <Input
@@ -83,30 +84,35 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 h-12 backdrop-blur-xl focus:bg-white/10 transition-all"
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold h-12 shadow-lg hover:shadow-xl transition-all"
+            >
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
+                <span className="w-full border-t border-white/20" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                <span className="bg-transparent px-2 text-white/60">Or continue with</span>
               </div>
             </div>
 
             <Button 
               type="button" 
-              variant="outline" 
-              className="w-full" 
               onClick={handleGoogleLogin}
               disabled={loading}
+              variant="outline"
+              className="w-full backdrop-blur-xl bg-white/5 border-white/20 hover:bg-white/10 text-white font-bold h-12 transition-all"
             >
-              <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+              <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -126,16 +132,18 @@ export default function LoginPage() {
               </svg>
               Sign in with Google
             </Button>
+          </form>
 
-            <p className="text-center text-sm text-gray-600">
+          <div className="mt-6 text-center">
+            <p className="text-white/70 text-sm">
               Don't have an account?{' '}
-              <a href="/signup" className="text-blue-600 hover:underline">
+              <a href="/signup" className="text-green-400 hover:text-green-300 font-semibold transition-colors">
                 Sign up
               </a>
             </p>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

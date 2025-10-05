@@ -70,7 +70,6 @@ const calculateHandValue = (hand: PlayingCard[]): number => {
 export default function BlackjackGame() {
   const router = useRouter();
   const { user, loading: authLoading, signOut } = useAuth();
-  
   const [chips, setChips] = useState(0);
   const [bet, setBet] = useState(10);
   const [playerHand, setPlayerHand] = useState<PlayingCard[]>([]);
@@ -81,9 +80,9 @@ export default function BlackjackGame() {
   const [history, setHistory] = useState<GameHistory[]>([]);
   const [aiAdvice, setAiAdvice] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
-  const [animatingCard, setAnimatingCard] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [newCardId, setNewCardId] = useState<string | null>(null);
+  const [showBuyChipsModal, setShowBuyChipsModal] = useState(false);
 
 
   // Redirect to login if not authenticated
@@ -309,13 +308,6 @@ export default function BlackjackGame() {
     setAiAdvice('');
   };
 
-  const buyChips = async () => {
-    const newChips = chips + 500;
-    setChips(newChips);
-    await updateChips(user.id, newChips);
-    setMessage('Added 500 chips!');
-  };
-
   const getAIHelp = async () => {
     if (gameState !== 'playing' || playerHand.length === 0) return;
     
@@ -459,6 +451,67 @@ export default function BlackjackGame() {
     );
   }
 
+  const BuyChipsModal = () => {
+  const handleBuyChips = (amount: number) => {
+    const newChips = chips + amount;
+    setChips(newChips);
+    updateChips(user.id, newChips);
+    setMessage(`Added ${amount} chips!`);
+    setShowBuyChipsModal(false);
+  };
+
+  if (!showBuyChipsModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl shadow-2xl p-8 max-w-md w-full">
+        <h2 className="text-3xl font-bold text-white mb-6 text-center">Buy Chips</h2>
+        
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <button
+            onClick={() => handleBuyChips(500)}
+            className="backdrop-blur-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="text-2xl mb-1">$500</div>
+            <div className="text-sm opacity-80">Small Stack</div>
+          </button>
+          
+          <button
+            onClick={() => handleBuyChips(1000)}
+            className="backdrop-blur-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="text-2xl mb-1">$1,000</div>
+            <div className="text-sm opacity-80">Medium Stack</div>
+          </button>
+          
+          <button
+            onClick={() => handleBuyChips(2000)}
+            className="backdrop-blur-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="text-2xl mb-1">$2,000</div>
+            <div className="text-sm opacity-80">Large Stack</div>
+          </button>
+          
+          <button
+            onClick={() => handleBuyChips(5000)}
+            className="backdrop-blur-xl bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-bold py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            <div className="text-2xl mb-1">$5,000</div>
+            <div className="text-sm opacity-80">VIP Stack</div>
+          </button>
+        </div>
+
+        <button
+          onClick={() => setShowBuyChipsModal(false)}
+          className="w-full backdrop-blur-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-all"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+};
+
 return (
   <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-green-900 to-teal-900 p-4">
     <div className="max-w-6xl mx-auto">
@@ -481,11 +534,11 @@ return (
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={buyChips} 
+              onClick={() => setShowBuyChipsModal(true)}
               variant="outline"
               className="backdrop-blur-xl bg-white/10 border-white/20 text-white hover:bg-white/20 transition-all"
             >
-              Buy 500 Chips
+              Buy Chips
             </Button>
             <Button 
               onClick={() => setShowHistory(true)} 
@@ -691,6 +744,9 @@ return (
           </Button>
         )}
       </div>
+
+      {/* Buy Chips Modal */}
+      <BuyChipsModal />
     </div>
   </div>
 );
