@@ -4,7 +4,7 @@ A fully functional online blackjack game with AI assistance, user authentication
 
 ## 🎮 Live Demo
 
-......
+[......](https://black-jackgame-ndqm.vercel.app/login)
 
 ## 👨‍💻 Developer Information
 
